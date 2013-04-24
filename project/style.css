@@ -1,0 +1,26 @@
+
+html, body {
+	padding: 0px;
+	margin: 0px;
+}
+
+body {
+	background-color: #222;
+	color: white;
+
+}
+
+#gamecanvas {
+	background-color: #002;
+	display: block;
+}
+
+#animsDownloadProgress {
+	position: absolute;
+	display: block;
+	width: auto;
+	height: 5%;
+	left: 15%;
+	right: 15%;
+	bottom: 50%;
+}

@@ -1,0 +1,25 @@
+{
+	"manifest_version": 2,
+	"name": "WebJJ2",
+	"description": "An attempt to recreate JJ2 using web technologies.",
+	"version": "0.3.1",
+	"icons": {
+		"128": "icon/jj2-icon-128.png",
+		"48": "icon/jj2-icon-48.png",
+		"16": "icon/jj2-icon-16.png"
+	},
+	"minimum_chrome_version": "24",
+	"app": {
+		"background": {
+			"scripts": ["background.js"]
+		}
+	},
+	"permissions": [
+		{"socket": [
+			"tcp-connect",
+			"udp-bind",
+			"udp-send-to"
+		]}
+	],
+	"update_url": "http://djazz.mine.nu/apps/webjj2/updatecrx.php"
+}

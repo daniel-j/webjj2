@@ -1,0 +1,15 @@
+{
+  "name": "nw-webjj2",
+  "version": "0.3.1",
+  "main": "app.html",
+  "single-instance": false,
+  "window": {
+  	"title": "WebJJ2",
+    "icon": "icon/jj2-icon-128.png",
+    "toolbar": false,
+    "width": 640,
+    "height": 480,
+    "resizable": true,
+    "position": "center"
+  }
+}

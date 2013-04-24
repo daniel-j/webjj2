@@ -1,0 +1,10 @@
+build/any/*
+build/chrome/*
+build/linux32/*
+build/linux64/*
+build/osx/*
+build/win32/*
+nw/
+www/
+jj2-chat-client-project/
+webjj2.pem
