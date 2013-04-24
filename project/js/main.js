@@ -240,19 +240,25 @@ reqjs.requirejs(['network', 'utils', 'anims'], function (network, utils, anims) 
 
 		//setFrame(vertices, uvs, 0, {x: 0, y: 0, width: anims.spritesheet.info.width, height: anims.spritesheet.info.height, hotspotX: 0, hotspotY: 0}, 0, 0);
 
-		console.log(sprites);
+		console.log(sprites, glowctx.cache);
 
 		window.addEventListener('resize', function () {
-			glowctx.cache.clear();
-			sprites.uniforms.u_resolution.data.value[0] = glowctx.width;
-			sprites.uniforms.u_resolution.data.value[1] = glowctx.height;
+			glowctx.cache.uniformByLocation[sprites.uniforms.u_resolution.locationNumber] = null;
 
+			animShader.data.u_resolution.set(glowctx.width, glowctx.height);
 		}, false);
 		var mouseX = 0;
 		var mouseY = 0;
 		window.addEventListener('mousemove', function (e) {
+			
+			// Hack to only uncache one uniform
+			glowctx.cache.uniformByLocation[sprites.uniforms.u_viewOffset.locationNumber] = null;
+
+
 			mouseX = e.pageX-glowctx.width/2;
 			mouseY = e.pageY-glowctx.height/2;
+			
+			animShader.data.u_viewOffset.set(mouseX/1.5, mouseY/1.5);
 		}, false);
 
 		var st = performance.now();
@@ -264,11 +270,6 @@ reqjs.requirejs(['network', 'utils', 'anims'], function (network, utils, anims) 
 			
 			var delta = (performance.now()-st)/1000;
 			//glowctx.clear();
-
-			glowctx.cache.clear();
-
-			sprites.uniforms.u_viewOffset.data.value[0] = mouseX/1.5;
-			sprites.uniforms.u_viewOffset.data.value[1] = mouseY/1.5;
 
 			stats.begin();
 
