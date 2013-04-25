@@ -23,48 +23,70 @@ window.requestAnimFrame = (function(){
 
 reqjs.requirejs(['network', 'utils', 'anims'], function (network, utils, anims) {
 	'use strict';
+	
+	function setFrame(vertices, uvs, offset, frame, posx, posy, flipX, rotation, scale) {
+		if (typeof rotation !== 'number') rotation = 0;
+		if (typeof scale !== 'number') scale = 1;
 
-	function setFrame(vertices, uvs, offset, frame, posx, posy) {
 
-		var x = frame.x;
-		var y = frame.y;
 		var w = frame.width;
 		var h = frame.height;
-		posx += frame.hotspotX;
-		posy += frame.hotspotY;
+
+		if (!flipX) {
+			var x1 = frame.x;
+			var x2 = frame.x+w;
+		} else {
+			var x1 = frame.x+w;
+			var x2 = frame.x;
+		}
+
+		var y1 = frame.y;
+		var y2 = frame.y+h;
+
+		var rotx = Math.cos(rotation);
+		var roty = Math.sin(rotation);
+
+		var dx = frame.hotspotX;
+		var dy = frame.hotspotY;
+		var dx2 = dx+w;
+		var dy2 = dy+h;
 		
-		uvs[offset*12 + 0] = x;
-		uvs[offset*12 + 1] = y;
-		vertices[offset*12+ 0] = posx;
-		vertices[offset*12+ 1] = posy;
+		//posx += frame.hotspotX;
+		//posy += frame.hotspotY;
 		
-		uvs[offset*12 + 2 ] = x + w;
-		uvs[offset*12 + 3] = y;
-		vertices[offset*12+ 2] = posx+w;
-		vertices[offset*12+ 3] = posy;
+		uvs[offset*12 + 0] = x1;
+		uvs[offset*12 + 1] = y1;
+		vertices[offset*12+ 0] = posx+(dx*rotx-dy*roty)*scale;
+		vertices[offset*12+ 1] = posy+(dx*roty+dy*rotx)*scale;
 		
-		uvs[offset*12 + 4] = x + w;
-		uvs[offset*12 + 5] = y + h;
-		vertices[offset*12+ 4] = posx+w;
-		vertices[offset*12+ 5] = posy+h;
+		uvs[offset*12 + 2 ] = x2;
+		uvs[offset*12 + 3] = y1;
+		vertices[offset*12+ 2] = posx+(dx2*rotx-dy*roty)*scale;
+		vertices[offset*12+ 3] = posy+(dx2*roty+dy*rotx)*scale;
+		
+		uvs[offset*12 + 4] = x2;
+		uvs[offset*12 + 5] = y2;
+		vertices[offset*12+ 4] = posx+(dx2*rotx-dy2*roty)*scale;
+		vertices[offset*12+ 5] = posy+(dx2*roty+dy2*rotx)*scale;
 		
 
-		uvs[offset*12 + 6] = x;
-		uvs[offset*12 + 7] = y;
-		vertices[offset*12+ 6] = posx;
-		vertices[offset*12+ 7] = posy;
+		uvs[offset*12 + 6] = x1;
+		uvs[offset*12 + 7] = y1;
+		vertices[offset*12+ 6] = posx+(dx*rotx-dy*roty)*scale;
+		vertices[offset*12+ 7] = posy+(dx*roty+dy*rotx)*scale;
 		
-		uvs[offset*12 + 8] = x + w;
-		uvs[offset*12 + 9] = y + h;
-		vertices[offset*12+ 8] = posx+w;
-		vertices[offset*12+ 9] = posy+h;
+		uvs[offset*12 + 8] = x2;
+		uvs[offset*12 + 9] = y2;
+		vertices[offset*12+ 8] = posx+(dx2*rotx-dy2*roty)*scale;
+		vertices[offset*12+ 9] = posy+(dx2*roty+dy2*rotx)*scale;
 		
-		uvs[offset*12 +10] = x;
-		uvs[offset*12 +11] = y + h;
-		vertices[offset*12+10] = posx;
-		vertices[offset*12+11] = posy+h;
+		uvs[offset*12 +10] = x1;
+		uvs[offset*12 +11] = y2;
+		vertices[offset*12+10] = posx+(dx*rotx-dy2*roty)*scale;
+		vertices[offset*12+11] = posy+(dx*roty+dy2*rotx)*scale;
 		
 	}
+	
 
 	//var compressed = new Zlib.Deflate(stringToBytesFaster("Hello, World!")).compress();
 	//console.log(new Zlib.Inflate(compressed).decompress());
@@ -203,6 +225,8 @@ reqjs.requirejs(['network', 'utils', 'anims'], function (network, utils, anims) 
 			},
 			
 			vertexShader: [
+				"precision lowp float;",
+
 				"attribute vec2 a_position;",
 				"attribute vec2 a_texCoord;",
 
@@ -219,7 +243,7 @@ reqjs.requirejs(['network', 'utils', 'anims'], function (network, utils, anims) 
 			].join("\n"),
 
 			fragmentShader: [
-				"precision highp float;",
+				"precision lowp float;",
 
 				"varying vec2 v_texCoord;",
 
@@ -273,13 +297,13 @@ reqjs.requirejs(['network', 'utils', 'anims'], function (network, utils, anims) 
 
 			stats.begin();
 
-			var setCount = 20;
+			var setCount = 15;
 			var animCount = 0;
 
 			for (var s = 0; s < anims.sets.length; s++) {
 				if (!anims.sets[s]) continue;
 				var set = anims.sets[s];
-				var speed = 5-0.5/((s+1)/anims.sets.length);
+				var speed = (anims.sets.length-s)/30;
 				for (var a = 0; a < set.animations.length; a++) {
 					if (!set.animations[a]) continue;
 					var anim = set.animations[a];
@@ -287,13 +311,15 @@ reqjs.requirejs(['network', 'utils', 'anims'], function (network, utils, anims) 
 					var frame = anim.frames[frameId];
 
 					var animSpace = (a/set.animations.length)*Math.PI*2;
-
+					var drawx = Math.min(delta/4, 1)*Math.cos(delta*(1/4)*speed+animSpace-mouseX/500)*setCount*5+glowctx.width/2;
+					var drawy = Math.min(delta/4, 1)*Math.sin(delta*(1/3)*speed+animSpace-mouseY/500)*setCount*5+glowctx.height/2;
+					var rotation = (delta*(s/2+15))/40+a*(Math.PI/4);
 					
-					setFrame(vertices, uvs, animCount, frame, Math.min(delta/4, 1)*Math.cos(delta*(setCount/500)*speed+animSpace-mouseX/500)*setCount*5+glowctx.width/2, Math.min(delta/4, 1)*Math.sin(delta*(setCount/600)*speed+animSpace-mouseY/500)*setCount*4+glowctx.height/2);
+					setFrame(vertices, uvs, animCount, frame, drawx, drawy, a % 2, rotation, 1+Math.sin(delta*2-(s/(anims.sets.length))*Math.PI*2)*0.6);
 
 					animCount++;
 				}
-				setCount++;
+				setCount+=(anims.sets.length-s)/90;
 			}
 
 			

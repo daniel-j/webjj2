@@ -40,7 +40,7 @@ reqjs.define(['utils'], function (utils) {
 	};
 	var cbQueue = [];
 	var downloadProgressCallback = null;
-	var downloadProgressNode = document.createElement('meter');
+	var downloadProgressNode = document.createElement('progress');
 	downloadProgressNode.id = "animsDownloadProgress";
 	
 	var worker = new Worker('js/anims-worker.js');
@@ -316,14 +316,15 @@ reqjs.define(['utils'], function (utils) {
 				});
 			}
 			
-			/*loadSet(55, function (set) {
-				loadAnimation(55, 0, function (anim) {
-					loadAnimation(55, 1, function (anim) {
+			/*loadSet(44, function (set) {
+				loadAnimation(44, 1, function (anim) {
+					//loadAnimation(55, 1, function (anim) {
 						buildSpriteSheet(function () {
+							downloadProgressNode.parentNode.removeChild(downloadProgressNode);
 							console.log(anims.spritesheet);
 							anims.onload();
 						});
-					});
+					//});
 				});
 			});*/
 
