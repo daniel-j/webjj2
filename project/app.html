@@ -14,6 +14,15 @@
 
 <script src="js/lib/inflate.min.js"></script>
 <script src="js/lib/GLOW.js"></script>
+<script>
+
+GLOW.Attribute.prototype.bufferSubData = function (data, offset) {
+	this.data.set(data, offset);
+	GL.bindBuffer( GL.ARRAY_BUFFER, this.buffer );
+	GL.bufferSubData( GL.ARRAY_BUFFER, offset*4, data );
+};
+
+</script>
 <script src="js/lib/Stats.js"></script>
 <script src="js/lib/require.min.js" data-main="js/main"></script>
 </body>

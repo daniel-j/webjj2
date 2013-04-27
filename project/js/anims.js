@@ -1,4 +1,4 @@
-reqjs.define(['utils'], function (utils) {
+reqjs.define(['utils', 'lib/EventEmitter'], function (utils, EventEmitter) {
 	'use strict';
 
 	function Set(animCount) {
@@ -29,42 +29,58 @@ reqjs.define(['utils'], function (utils) {
 	
 	var animsPath = "../game/Anims.j2a";
 
-	var anims = {
-		version: 0,
-		sets: [],
-
-		spritesheet: {
-			pixelBuffer: null,
-			info: null
-		}
+	var anims = Object.create(new EventEmitter());
+	anims.version = 0;
+	anims.sets = [];
+	anims.spritesheet =  {
+		pixelBuffer: null,
+		info: null
 	};
+	anims.init = init;
+	anims.buildSpriteSheet = buildSpriteSheet;
+	anims.loadSet = loadSet;
+	anims.loadAnimation = loadAnimation;
+
+	var worker = null;
 	var cbQueue = [];
-	var downloadProgressCallback = null;
-	var downloadProgressNode = document.createElement('progress');
-	downloadProgressNode.id = "animsDownloadProgress";
-	
-	var worker = new Worker('js/anims-worker.js');
 
-	worker.addEventListener('message', function (e) {
-		var data = e.data;
-		if (data && data.hasOwnProperty('debug')) {
-			console.log("Anims worker:", data.debug);
+	function init(cb) {
+		if (worker) {
 			return;
 		}
+		
+		worker = new Worker('js/anims-worker.js');
 
-		if (data && data.hasOwnProperty('downloadProgress')) {
-			handleDownloadProgress(data.downloadProgress);
-			return;
-		}
+		worker.addEventListener('message', function (e) {
+			var data = e.data;
+			if (data && data.hasOwnProperty('debug')) {
+				console.log("Anims worker:", data.debug);
+				return;
+			}
 
-		var cb = cbQueue.shift();
-		if (typeof cb === 'function') {
-			cb(data);
-		} else {
-			throw "Anims: Unhandled worker callback for data "+data;
-		}
+			if (data && data.hasOwnProperty('downloadProgress')) {
+				handleDownloadProgress(data.downloadProgress);
+				return;
+			}
 
-	}, false);
+			var cb = cbQueue.shift();
+			if (typeof cb === 'function') {
+				cb(data);
+			} else {
+				throw "Anims: Unhandled worker callback for data "+data;
+			}
+
+		}, false);
+
+		// When the worker is ready
+		addCallback(function () {
+			loadAnimFile(animsPath, function (ok) {
+				anims.removeAllListeners('downloadProgress');
+				anims.emit('downloaded');
+			});
+		});
+		
+	}
 
 	function addCallback(cb) {
 		cbQueue.push(cb);
@@ -81,10 +97,8 @@ reqjs.define(['utils'], function (utils) {
 		anims.sets = [];
 		anims.spritesheet.pixelBuffer = null;
 		anims.spritesheet.info = null;
-		downloadProgressCallback = dlcb || null;
 		//console.log("Loading animation library file...");
-		document.body.appendChild(downloadProgressNode);
-		downloadProgressNode.value = 0;
+		
 		workerAction('loadAnimFile', [animsPath], function (info) {
 			if (info) {
 				anims.version = info.version;
@@ -95,7 +109,6 @@ reqjs.define(['utils'], function (utils) {
 				cb(false);
 			}
 			
-			downloadProgressCallback = null;
 		});
 	}
 
@@ -103,10 +116,8 @@ reqjs.define(['utils'], function (utils) {
 		var loaded = arr[0];
 		var total = arr[1];
 		var ratio = arr[2];
-		if (typeof downloadProgressCallback === 'function') {
-			downloadProgressCallback(loaded, total, ratio);
-		}
-		downloadProgressNode.value = ratio*0.7;
+		
+		anims.emit('downloadProgress', ratio);
 	}
 
 	function loadSet(setId, cb) {
@@ -208,9 +219,8 @@ reqjs.define(['utils'], function (utils) {
 		});
 	}
 
-	function buildSpriteSheet(cb) {
+	function buildSpriteSheet() {
 		var st = performance.now();
-		cb = cb || function () {};
 		anims.spritesheet.pixelBuffer = null;
 		anims.spritesheet.info = null;
 		var packedInfo = null;
@@ -229,7 +239,7 @@ reqjs.define(['utils'], function (utils) {
 			anims.spritesheet.pixelBuffer = new Uint8Array(pixelBuffer);
 			anims.spritesheet.info = packedInfo;
 			console.log("Built spritesheet in "+(performance.now()-st)+" ms");
-			cb();
+			anims.emit('spritesheet');
 		});
 		
 
@@ -272,70 +282,7 @@ reqjs.define(['utils'], function (utils) {
 		
 	}
 
-	// When the worker is ready
-	addCallback(function () {
-		
-		loadAnimFile(animsPath, function (ok) {
-			var st = performance.now();
-			var totalAnimCount = 0;
-			var totalFrameCount = 0;
-			var totalPixelCount = 0;
-			var loadedAnimCount = 0;
 
-			for (var i = 0; i < anims.sets.length; i++) {
-				loadSet(i, function (set) {
-					var setId = anims.sets.indexOf(set);
-					for (var i = 0; i < anims.sets[setId].animations.length; i++) {
-						totalAnimCount++;
-						loadAnimation(setId, i, function (anim) {
-							loadedAnimCount++;
-
-							//for (var i = 0; i < anim.frames.length; i++) {
-							//	totalPixelCount += anim.frames[i].width*anim.frames[i].height;
-							//}
-							//totalFrameCount += anim.frames.length;
-							downloadProgressNode.value = 0.7+0.29*(loadedAnimCount/totalAnimCount);
-
-							if (totalAnimCount === loadedAnimCount) {
-
-								buildSpriteSheet(function () {
-									downloadProgressNode.value = 1;
-									console.log("Sprites extracted and built spritesheet in (ms):", performance.now()-st);
-									console.log(anims.spritesheet);
-									downloadProgressNode.parentNode.removeChild(downloadProgressNode);
-									anims.onload();
-								});
-								
-							}
-							
-							
-
-							
-						});
-					}
-				});
-			}
-			
-			/*loadSet(44, function (set) {
-				loadAnimation(44, 1, function (anim) {
-					//loadAnimation(55, 1, function (anim) {
-						buildSpriteSheet(function () {
-							downloadProgressNode.parentNode.removeChild(downloadProgressNode);
-							console.log(anims.spritesheet);
-							anims.onload();
-						});
-					//});
-				});
-			});*/
-
-			/*setInterval(function () {
-				console.log(totalFrameCount);
-			}, 100);*/
-			
-		}, function (loaded, total, ratio) {
-			//console.log("Progress:", ratio*100);
-		});
-	});
 
 	return anims;
 });
